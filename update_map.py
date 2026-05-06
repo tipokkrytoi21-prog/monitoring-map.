@@ -1,98 +1,97 @@
+import os
+import re
 import requests
-from bs4 import BeautifulSoup
-import folium
-from geopy.geocoders import Nominatim
-import time
+from datetime import datetime, timedelta
 
-def run_final_monitor():
-    # 1. Настройки и границы (GeoJSON)
-    geojson_url = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/russia.geojson'
-    url = "https://t.me/s/lpr1_treugolnik"
-    
-    # 2. Сбор постов из Telegram
-    res = requests.get(url)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    messages = soup.find_all('div', class_='tgme_widget_message_text')
-    times = soup.find_all('time', class_='time')
+# Настройки
+CHANNELS = ['monitoring_war', 'vanek_nikolaev'] # Добавь свои каналы сюда
+KEYWORDS = ['пуск', 'бпла', 'взрыв', 'ракета', 'угроза', 'баллистика', 'вылет']
+# Словарь координат для крупных городов (чтобы не нагружать систему поиском)
+CITY_COORDS = {
+    'Миллерово': [48.92, 40.39],
+    'Ростов': [47.23, 39.72],
+    'Орск': [51.23, 58.46],
+    'Оренбург': [51.76, 55.09],
+    'Белгород': [50.59, 36.58],
+    'Курск': [51.73, 36.19],
+    'Воронеж': [51.67, 39.18]
+}
 
-    # 3. Создание темной карты (Dark Mode)
-    m = folium.Map(location=[50, 40], zoom_start=5, tiles='CartoDB dark_matter')
+def get_coordinates(text):
+    # Сначала ищем по словарю
+    for city, coords in CITY_COORDS.items():
+        if city.lower() in text.lower():
+            return coords
+    # Если города нет в словаре, ставим в центр РФ (заглушка)
+    return [55.75, 37.61] 
 
-    # Словарь регионов для закраски
-    status_map = {}
-    regions_dict = {
-        'белгород': 'Belgorod Oblast', 'курск': 'Kursk Oblast', 
-        'брянск': 'Bryansk Oblast', 'воронеж': 'Voronezh Oblast',
-        'ростов': 'Rostov Oblast', 'крым': 'Republic of Crimea',
-        'севастополь': 'Republic of Crimea', 'донецк': 'Donetsk Oblast',
-        'луганск': 'Luhansk Oblast', 'запорож': 'Zaporizhia Oblast',
-        'херсон': 'Kherson Oblast', 'оренбург': 'Orenburg Oblast'
-    }
+def generate_map(alerts):
+    # Шаблон HTML с поддержкой пульсации
+    html_template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Мониторинг Карта</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <style>
+            #map { height: 100vh; width: 100%; background: #1a1a1a; }
+            body { margin: 0; }
+            .pulsating-marker {
+                background: red;
+                border-radius: 50%;
+                box-shadow: 0 0 0 rgba(255, 0, 0, 0.4);
+                animation: pulse 1.5s infinite;
+            }
+            @keyframes pulse {
+                0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+                70% { box-shadow: 0 0 0 15px rgba(255, 0, 0, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+            }
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script>
+            var map = L.map('map').setView([50.0, 40.0], 5);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-    # Анализ последних 30 сообщений для заливки областей
-    for msg in messages[-30:]:
-        text = msg.get_text().lower()
-        color = "#f1c40f" # Желтый (опасность)
-        if any(x in text for x in ['пуск', 'ракета', 'ракетная']): 
-            color = "#c0392b" # Красный (ракеты)
-        elif any(x in text for x in ['бпла', 'герань', 'беспилотник']): 
-            color = "#e67e22" # Оранжевый (дроны)
+            var alerts = """ + str(alerts) + """;
+            
+            alerts.forEach(function(alert) {
+                var markerOptions = {};
+                // Если алерту меньше 60 минут - он пульсирует
+                if (alert.is_new) {
+                    var pulseIcon = L.divIcon({
+                        className: 'pulsating-marker',
+                        iconSize: [12, 12]
+                    });
+                    L.marker(alert.coords, {icon: pulseIcon}).addTo(map)
+                        .bindPopup("<b>НОВАЯ УГРОЗА!</b><br>" + alert.text);
+                } else {
+                    L.circleMarker(alert.coords, {radius: 8, color: 'orange'}).addTo(map)
+                        .bindPopup(alert.text);
+                }
+            });
+        </script>
+    </body>
+    </html>
+    """
+    with open('index.html', 'w', encoding='utf-8') as f:
+        f.write(html_template)
 
-        for key, geo_name in regions_dict.items():
-            if key in text:
-                status_map[geo_name] = color
-
-    # 4. Отрисовка закрашенных регионов
-    folium.GeoJson(
-        geojson_url,
-        style_function=lambda feature: {
-            'fillColor': status_map.get(feature['properties']['name'], 'transparent'),
-            'color': 'white', 'weight': 0.7, 'fillOpacity': 0.4,
-        }
-    ).add_to(m)
-
-    # 5. Установка иконок (вспышки, ракеты)
-    geo = Nominatim(user_agent="global_monitor_2026")
-    for i, msg in enumerate(messages[-15:]):
-        raw_text = msg.get_text()
-        msg_time = times[i].get_text() if i < len(times) else ""
-        
-        words = [w.strip('.,!') for w in raw_text.split() if w and w[0].isupper() and len(w) > 4]
-        for word in words:
-            try:
-                loc = geo.geocode(f"{word}, Russia", timeout=5)
-                if loc and (43 < loc.latitude < 65):
-                    icon_type, icon_color = 'info-sign', 'orange'
-                    if 'пво' in raw_text.lower() or 'сбито' in raw_text.lower():
-                        icon_type, icon_color = 'fire', 'red'
-                    
-                    folium.Marker(
-                        location=[loc.latitude, loc.longitude],
-                        popup=f"<b>{word}</b> [{msg_time}]<br>{raw_text[:150]}",
-                        icon=folium.Icon(color=icon_color, icon=icon_type)
-                    ).add_to(m)
-                    time.sleep(0.3)
-            except: continue
-
-    # 6. HTML-шапка для авто-обновления и легенда
-    header_html = '<meta http-equiv="refresh" content="300">' # Сайт будет сам обновляться каждые 5 мин
-    m.get_root().header.add_child(folium.Element(header_html))
-
-    legend_html = '''
-     <div style="position: fixed; bottom: 30px; left: 30px; width: 220px; 
-     background: rgba(30,30,30,0.9); color: white; border-radius: 8px;
-     padding: 12px; z-index:9999; font-family: Arial; border: 1px solid #444;">
-     <b style="font-size: 14px;">МОНИТОРИНГ КАРТА</b><br><br>
-     <small><span style="color:#f1c40f;">●</span> Потенциальная опасность</small><br>
-     <small><span style="color:#e67e22;">●</span> Фиксация БПЛА</small><br>
-     <small><span style="color:#c0392b;">●</span> Ракетная угроза</small>
-     </div>
-    '''
-    m.get_root().html.add_child(folium.Element(legend_html))
-
-    m.save("index.html") # Результат сохраняется в index.html
-    print("Файл index.html создан.")
+# Имитация сбора данных (заменится на реальный парсинг позже)
+def main():
+    # Пример данных, которые мы "нашли"
+    test_alerts = [
+        {"coords": [48.92, 40.39], "text": "Миллерово - угроза БПЛА", "is_new": True},
+        {"coords": [47.23, 39.72], "text": "Ростовская область - зафиксированы вылеты", "is_new": False},
+        {"coords": [51.23, 58.46], "text": "Орск - метео-мониторинг", "is_new": False}
+    ]
+    generate_map(test_alerts)
 
 if __name__ == "__main__":
-    run_final_monitor()
-  
+    main()
+    
