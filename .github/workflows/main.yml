@@ -1,0 +1,28 @@
+name: Update Map
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Install tools
+        run: pip install -r requirements.txt
+      - name: Run script
+        run: python update_map.py
+      - name: Save result
+        run: |
+          git config --global user.name "Bot"
+          git config --global user.email "bot@github.com"
+          git add index.html
+          git commit -m "Auto-update" || exit 0
+          git push
+          
