@@ -1,6 +1,9 @@
+import os
 import requests
 import json
+import subprocess
 
+# Список городов
 cities = {
     'Orsk': [51.23, 58.46],
     'Orenburg': [51.76, 55.09],
@@ -8,6 +11,7 @@ cities = {
 }
 
 def main():
+    # 1. Собираем данные
     markers = []
     for name, coords in cities.items():
         try:
@@ -18,6 +22,7 @@ def main():
         except:
             markers.append({"coords": coords, "name": f"{name}: No data"})
 
+    # 2. Генерируем HTML
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -39,8 +44,25 @@ def main():
     </body>
     </html>
     """
+    
+    # 3. Сохраняем файл
     with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html)
+    
+    # 4. Автоматически отправляем в репозиторий
+    try:
+        subprocess.run(["git", "config", "--global", "user.name", "github-actions[bot]"], check=True)
+        subprocess.run(["git", "config", "--global", "user.email", "github-actions[bot]@users.noreply.github.com"], check=True)
+        subprocess.run(["git", "add", "index.html"], check=True)
+        # Коммит только если есть изменения
+        result = subprocess.run(["git", "commit", "-m", "Auto-update map"], capture_output=True)
+        if result.returncode == 0:
+            subprocess.run(["git", "push"], check=True)
+            print("Карта успешно обновлена и отправлена в репозиторий.")
+        else:
+            print("Изменений нет, ничего не отправляем.")
+    except Exception as e:
+        print(f"Ошибка при сохранении: {e}")
 
 if __name__ == "__main__":
     main()
