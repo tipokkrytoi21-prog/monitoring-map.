@@ -1,6 +1,6 @@
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 # РАСШИРЕННАЯ БАЗА ГОРОДОВ (Координаты: [широта, долгота])
 CITY_DB = {
@@ -81,6 +81,10 @@ def get_weather_alerts():
     return alerts
 
 def generate_map(alerts):
+    # Принудительно выставляем часовой пояс UTC+5 (Орск / Екатеринбург)
+    tz_orsk = timezone(timedelta(hours=5))
+    current_time = datetime.now(tz_orsk).strftime("%H:%M")
+
     html_template = """
     <!DOCTYPE html>
     <html>
@@ -113,7 +117,7 @@ def generate_map(alerts):
         </style>
     </head>
     <body>
-        <div class="update-tag">ОБНОВЛЕНО: """ + datetime.now().strftime("%H:%M") + """</div>
+        <div class="update-tag">ОБНОВЛЕНО: """ + current_time + """</div>
         <div id="map"></div>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script>
