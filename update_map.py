@@ -61,14 +61,14 @@ def get_weather_alerts():
                     reasons.append("Опасные осадки / Гроза")
 
                 if is_danger:
-                    # Красный пульсирующий маркер для реальной угрозы
+                    # Маркер для реальной угрозы
                     alerts.append({
                         "coords": coords,
                         "text": f"<b>{city.upper()}</b>:<br>⚠️ ОБЪЯВЛЕНА УГРОЗА!<br>Причина: {', '.join(reasons)}",
                         "is_new": True
                     })
                 else:
-                    # Оранжевый маркер — обстановка стабильная, но мониторинг идет
+                    # Обстановка стабильная, но мониторинг идет
                     alerts.append({
                         "coords": coords,
                         "text": f"<b>{city.upper()}</b>:<br>Обстановка под контролем.<br>Температура: {temp}°C, Ветер: {wind} м/с",
@@ -128,12 +128,23 @@ def generate_map(alerts):
             var alerts = """ + str(alerts) + """;
             alerts.forEach(function(alert) {
                 if (alert.is_new) {
+                    // 1. Рисуем большую полупрозрачную красную зону опасности (радиус 70 км)
+                    L.circle(alert.coords, {
+                        radius: 70000,
+                        color: '#ff3333',
+                        fillColor: '#ff3333',
+                        fillOpacity: 0.25,
+                        weight: 2
+                    }).addTo(map).bindPopup(alert.text);
+
+                    // 2. Ставим в центр зоны мигающий маркер-пульсар
                     var icon = L.divIcon({ className: 'pulse', iconSize: [18, 18] });
                     L.marker(alert.coords, {icon: icon}).addTo(map).bindPopup(alert.text);
                 } else {
+                    // Зеленая точка, когда обстановка спокойная
                     L.circleMarker(alert.coords, {
                         radius: 6, 
-                        color: '#22c55e', // Зеленый маркер — всё спокойно
+                        color: '#22c55e', 
                         fillColor: '#22c55e',
                         fillOpacity: 0.6,
                         weight: 1
