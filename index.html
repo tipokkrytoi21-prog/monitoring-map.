@@ -2,7 +2,7 @@
     <!DOCTYPE html>
     <html>
     <head>
-        <title>LIVE Мониторинг</title>
+        <title>LIVE Мониторинг Опасностей РФ</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -11,38 +11,46 @@
             body { margin: 0; padding: 0; }
             .pulse {
                 width: 18px; height: 18px;
-                background: #ff0000; border-radius: 50%;
-                box-shadow: 0 0 0 rgba(255, 0, 0, 0.4);
+                background: #ff3333; border-radius: 50%;
+                box-shadow: 0 0 0 rgba(255, 51, 51, 0.4);
                 animation: pulse-red 1.2s infinite;
                 border: 2px solid white;
             }
             @keyframes pulse-red {
-                0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-                70% { box-shadow: 0 0 0 20px rgba(255, 0, 0, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+                0% { box-shadow: 0 0 0 0 rgba(255, 51, 51, 0.7); }
+                70% { box-shadow: 0 0 0 15px rgba(255, 51, 51, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(255, 51, 51, 0); }
             }
             .update-tag {
                 position: absolute; top: 10px; right: 10px; z-index: 1000;
-                background: rgba(255, 255, 255, 0.9); padding: 5px 10px;
+                background: rgba(20, 20, 20, 0.85); color: #fff; padding: 6px 12px;
                 border-radius: 20px; font-family: sans-serif; font-weight: bold; font-size: 12px;
+                border: 1px solid #333; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
             }
         </style>
     </head>
     <body>
-        <div class="update-tag">ОБНОВЛЕНО: 12:53</div>
+        <div class="update-tag">ОБНОВЛЕНО: 21:14</div>
         <div id="map"></div>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script>
-            var map = L.map('map').setView([48.5, 39.5], 7);
+            // Центрируем карту между Югом и Уралом
+            var map = L.map('map').setView([48.0, 48.0], 5);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-            var alerts = [{'coords': [48.92, 40.39], 'text': 'Связь установлена. Ожидаем данные из каналов...', 'is_new': False}];
+            var alerts = [{'coords': [51.23, 58.46], 'text': '<b>ОРСК</b>:<br>Обстановка под контролем.<br>Температура: 13.7°C, Ветер: 2.01 м/с', 'is_new': False}, {'coords': [51.76, 55.09], 'text': '<b>ОРЕНБУРГ</b>:<br>Обстановка под контролем.<br>Температура: 13.6°C, Ветер: 2.83 м/с', 'is_new': False}, {'coords': [44.71, 37.76], 'text': '<b>НОВОРОССИЙСК</b>:<br>Обстановка под контролем.<br>Температура: 14.7°C, Ветер: 1.63 м/с', 'is_new': False}, {'coords': [45.26, 37.38], 'text': '<b>ТЕМРЮК</b>:<br>Обстановка под контролем.<br>Температура: 15.2°C, Ветер: 1.04 м/с', 'is_new': False}, {'coords': [45.04, 38.97], 'text': '<b>КРАСНОДАР</b>:<br>Обстановка под контролем.<br>Температура: 13.1°C, Ветер: 1.33 м/с', 'is_new': False}, {'coords': [43.6, 39.72], 'text': '<b>СОЧИ</b>:<br>Обстановка под контролем.<br>Температура: 21.4°C, Ветер: 0.71 м/с', 'is_new': False}, {'coords': [47.23, 39.72], 'text': '<b>РОСТОВ-НА-ДОНУ</b>:<br>Обстановка под контролем.<br>Температура: 17.1°C, Ветер: 3.95 м/с', 'is_new': False}, {'coords': [47.23, 38.89], 'text': '<b>ТАГАНРОГ</b>:<br>Обстановка под контролем.<br>Температура: 17.1°C, Ветер: 4.22 м/с', 'is_new': False}, {'coords': [50.59, 36.58], 'text': '<b>БЕЛГОРОД</b>:<br>Обстановка под контролем.<br>Температура: 12.9°C, Ветер: 3.58 м/с', 'is_new': False}, {'coords': [51.73, 36.19], 'text': '<b>КУРСК</b>:<br>Обстановка под контролем.<br>Температура: 10.8°C, Ветер: 3.16 м/с', 'is_new': False}, {'coords': [53.25, 34.37], 'text': '<b>БРЯНСК</b>:<br>Обстановка под контролем.<br>Температура: 10.4°C, Ветер: 3.18 м/с', 'is_new': False}, {'coords': [51.67, 39.18], 'text': '<b>ВОРОНЕЖ</b>:<br>Обстановка под контролем.<br>Температура: 12.0°C, Ветер: 2.91 м/с', 'is_new': False}, {'coords': [55.75, 37.61], 'text': '<b>МОСКВА</b>:<br>Обстановка под контролем.<br>Температура: 9.2°C, Ветер: 2.28 м/с', 'is_new': False}, {'coords': [48.01, 37.8], 'text': '<b>ДОНЕЦК</b>:<br>Обстановка под контролем.<br>Температура: 16.1°C, Ветер: 3.48 м/с', 'is_new': False}];
             alerts.forEach(function(alert) {
                 if (alert.is_new) {
                     var icon = L.divIcon({ className: 'pulse', iconSize: [18, 18] });
                     L.marker(alert.coords, {icon: icon}).addTo(map).bindPopup(alert.text);
                 } else {
-                    L.circleMarker(alert.coords, {radius: 8, color: '#ffa500', fillOpacity: 0.7}).addTo(map).bindPopup(alert.text);
+                    L.circleMarker(alert.coords, {
+                        radius: 6, 
+                        color: '#22c55e', // Зеленый маркер — всё спокойно
+                        fillColor: '#22c55e',
+                        fillOpacity: 0.6,
+                        weight: 1
+                    }).addTo(map).bindPopup(alert.text);
                 }
             });
         </script>
